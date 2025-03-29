@@ -3,9 +3,9 @@ package main
 import (
 	"embed"
 	"fmt"
+	"html/template"
 	"net/http"
 	"strings"
-	"text/template"
 )
 
 type templateData struct {
