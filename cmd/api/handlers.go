@@ -1,8 +1,10 @@
 package main
 
 import (
+	"ecommerce/internal/cards"
 	"encoding/json"
 	"net/http"
+	"strconv"
 )
 
 type stripePayload struct {
@@ -11,22 +13,62 @@ type stripePayload struct {
 }
 
 type jsonResponse struct {
-	ID      int    `json:"id"`
+	ID      int    `json:"id,omitempty"`
 	OK      bool   `json:"ok"`
-	Message string `json:"message"`
-	Content string `json:"content"`
+	Message string `json:"message,omitempty"`
+	Content string `json:"content,omitempty"`
 }
 
 func (app *application) GetPaymentIntent(w http.ResponseWriter, r *http.Request) {
-	j := jsonResponse{
-		OK: true,
+	var payload stripePayload
+
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		app.errorLog.Println(err)
+		return
 	}
 
-	out, err := json.MarshalIndent(j, "", "		")
+	amount, err := strconv.Atoi(payload.Amount)
 	if err != nil {
 		app.errorLog.Println(err)
+		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(out)
+	card := cards.Card{
+		Secret:   app.config.stripe.secret,
+		Key:      app.config.stripe.key,
+		Currency: payload.Currency,
+	}
+
+	okay := true
+
+	pi, msg, err := card.Charge(payload.Currency, amount)
+	if err != nil {
+		app.errorLog.Println(err)
+		okay = false
+	}
+
+	if okay {
+		out, err := json.MarshalIndent(pi, "", "	")
+		if err != nil {
+			app.errorLog.Println(err)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(out)
+	} else {
+		j := jsonResponse{
+			OK:      false,
+			Message: msg,
+			Content: "",
+		}
+
+		out, err := json.MarshalIndent(j, "", "	")
+		if err != nil {
+			app.errorLog.Println(err)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(out)
+	}
 }
