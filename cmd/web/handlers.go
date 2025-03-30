@@ -19,7 +19,6 @@ func (app *application) PaymentSucceeded(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// read posted data
 	cardHolder := r.Form.Get("cardholder_name")
 	email := r.Form.Get("email")
 	paymentIntent := r.Form.Get("payment_intent")
@@ -38,6 +37,12 @@ func (app *application) PaymentSucceeded(w http.ResponseWriter, r *http.Request)
 	if err := app.renderTemplate(w, r, "succeeded", &templateData{
 		Data: data,
 	}); err != nil {
+		app.errorLog.Println(err)
+	}
+}
+
+func (app *application) ChargeOnce(w http.ResponseWriter, r *http.Request) {
+	if err := app.renderTemplate(w, r, "by-once", nil); err != nil {
 		app.errorLog.Println(err)
 	}
 }
